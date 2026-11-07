@@ -38,13 +38,23 @@ jobs:
 
       - name: Set launcher icon
         run: |
-          RES=android/app/src/main/res
-          rm -f $RES/mipmap-anydpi-v26/*.xml
-          for pair in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432; do
-            IFS=: read d legacy fg <<< "$pair"
-            convert icons/icon-512.png -resize ${legacy}x${legacy} $RES/mipmap-$d/ic_launcher.png
-            cp $RES/mipmap-$d/ic_launcher.png $RES/mipmap-$d/ic_launcher_round.png
-          done
+          pip install pillow
+          python3 - <<'PY'
+          from PIL import Image
+          import glob, os
+          res = "android/app/src/main/res"
+          for f in glob.glob(res + "/mipmap-anydpi-v26/*.xml"):
+              os.remove(f)
+          sizes = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+          src = Image.open("icons/icon-512.png").convert("RGBA")
+          for d, px in sizes.items():
+              img = src.resize((px, px), Image.LANCZOS)
+              img.save(f"{res}/mipmap-{d}/ic_launcher.png")
+              img.save(f"{res}/mipmap-{d}/ic_launcher_round.png")
+              fg = f"{res}/mipmap-{d}/ic_launcher_foreground.png"
+              if os.path.exists(fg):
+                  os.remove(fg)
+          PY
 
       - name: Build APK
         working-directory: android
